@@ -1,0 +1,10 @@
+<launch>
+
+  <node
+    pkg = "robotiq_3f_gripper_joint_state_publisher"
+    type = "robotiq_3f_gripper_joint_states"
+    name = "robotiq_3f_gripper_joint_states"  
+    output = "screen"
+    args= "_prefix:=3f_gripper_"
+  />
+</launch>

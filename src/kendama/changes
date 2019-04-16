@@ -1,0 +1,2 @@
+roslaunch ur_modern_driver ur5e_ros_control.launch robot_ip:=192.168.1.2
+------changed-------- output="screen" args="joint_state_controller force_torque_sensor_controller vel_based_pos_traj_controller" />

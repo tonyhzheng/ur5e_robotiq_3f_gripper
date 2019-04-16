@@ -1,0 +1,117 @@
+Works on real hardware
+################################################################################
+1.a) real hardware
+roslaunch ur_modern_driver ur5e_ros_control.launch robot_ip:=192.168.1.2
+
+1.b)simulation
+roslaunch ur_e_gazebo ur5e.launch
+
+2) Moveit trajectory planners
+roslaunch ur5_e_moveit_config ur5_e_moveit_planning_execution.launch limited:=true
+
+3) Rviz 
+roslaunch ur5_e_moveit_config moveit_rviz.launch config:=true
+################################################################################
+
+
+
+
+
+
+
+
+
+
+roslaunch ur_modern_driver ur5e_bringup.launch robot_ip:=192.168.1.2
+roslaunch ur_modern_driver ur5e_ros_control.launch robot_ip:=192.168.1.2
+roslaunch ur5_e_moveit_config ur5_e_moveit_planning_execution.launch
+
+
+rosrun robotiq_3f_gripper_control Robotiq3FGripperTcpNode.py 192.168.1.11
+rosrun robotiq_3f_gripper_control Robotiq3FGripperSimpleController.py
+rosrun robotiq_3f_gripper_control Robotiq3FGripperStatusListener.py
+
+roslaunch robotiq_3f_gripper_articulated_gazebo robotiq_gripper_empty_world.launch
+
+rosrun robotiq_3f_gripper_joint_state_publisher robotiq_3f_gripper_joint_states _prefix:="3f_gripper_"
+
+
+
+################################################################################
+SIMULATION
+################################################################################
+
+~/Downloads/ursim-5.1.0.40195$ ./start-ursim.sh 
+roslaunch ur_modern_driver ur5e_ros_control.launch robot_ip:=127.0.0.1
+
+
+
+
+
+
+
+roslaunch ur5_e_moveit_config ur5_e_moveit_planning_execution.launch sim:=true 
+roslaunch ur5_e_moveit_config moveit_rviz.launch config:=true
+
+rosrun kendama main.py 
+
+Modify srdf collisions called in planning_context.launch
+
+
+
+roslaunch ur_modern_driver ur5_bringup.launch robot_ip:=192.168.1.2
+roslaunch ur5_moveit_config ur5_moveit_planning_execution.launch
+roslaunch ur5_moveit_config moveit_rviz.launch config:=true
+################################################################################
+INSTALLATION
+################################################################################
+sudo apt-get install ros-kinetic-soem ros-kinetic-ros-canopen libmuparser-dev  ros-kinetic-ros-control  ros-kinetic-moveit-simple-controller-manager
+sudo apt-get install ros-kinetic-*controllers-*
+
+http://wiki.ros.org/robotiq
+https://github.com/dniewinski/universal_robot
+https://github.com/dniewinski/ur_modern_driver
+
+http://wiki.ros.org/robotiq/Tutorials/Control%20of%20a%203-Finger%20Gripper%20using%20the%20Modbus%20TCP%20Protocol
+https://github.com/ros/ros_comm_msgs
+
+
+https://answers.ros.org/question/292444/gazebo_ros_control-plugin-gazeboroscontrolplugin-missing-legacymodens-defaultrobothwsim/
+
+https://github.com/ros-controls/ros_controllers/tree/kinetic-devel
+
+https://askubuntu.com/questions/654951/failed-to-connect-to-socket-com-ubuntu-upstart-connection-refused-errors-were/665742#665742
+
+https://github.com/ros-industrial/universal_robot/pull/284
+https://github.com/ros-industrial/ur_modern_driver/pull/120 changed modern driver
+http://wiki.ros.org/jog_arm
+https://github.com/ros-industrial/ur_modern_driver/pull/216
+
+grep -r "joint_speed"
+
+
+
+################################################################################
+FRAME CONVERSION TREE VIEw
+################################################################################
+
+rosrun xacro xacro `rospack find ur_e_description`/urdf/ur5e_robot.urdf.xacro -o /tmp/ur5e.urdf
+
+check_urdf /tmp/ur5e.urdf 
+____________________________________________
+robot name is: ur5e
+---------- Successfully Parsed XML ---------------
+root Link: world has 1 child(ren)
+    child(1):  base_link
+        child(1):  base
+        child(2):  shoulder_link
+            child(1):  upper_arm_link
+                child(1):  forearm_link
+                    child(1):  wrist_1_link
+                        child(1):  wrist_2_link
+                            child(1):  wrist_3_link
+                                child(1):  ee_link
+                                child(2):  tool0
+
+
+urdf_to_graphiz /tmp/phantom_pincher.urdf

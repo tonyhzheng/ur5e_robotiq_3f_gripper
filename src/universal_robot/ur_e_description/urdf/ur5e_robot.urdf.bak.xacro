@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro"
+       name="ur5e" >
+
+  <!-- common stuff -->
+  <xacro:include filename="$(find ur_e_description)/urdf/common.gazebo.xacro" />
+
+  <!-- ur5e -->
+  <xacro:include filename="$(find ur_e_description)/urdf/ur5e.urdf.xacro" />
+
+  <!-- arm -->
+  <xacro:ur5e_robot prefix="" joint_limited="false"/>
+
+  <link name="world" />
+
+  <joint name="world_joint" type="fixed">
+    <parent link="world" />
+    <child link = "base_link" />
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+
+
+
+  <xacro:include filename="$(find robotiq_3f_gripper_visualization)/cfg/robotiq-3f-gripper_articulated_macro.xacro" />
+
+  <xacro:robotiq-3f-gripper_articulated prefix=""/>
+
+  <!-- gripper_link -->
+    <link name="gripper_link"/>
+    <joint name="gripper_link_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="tool0"/>
+      <child link="gripper_link"/>
+      <!-- <limit effort="6" velocity="1" lower="-3.14" upper="3.14"/>
+      <axis xyz="1 0 0"/> -->
+    </joint>
+
+  <!-- <robotiq-3f-gripper_finger_articulated parent="tool0">
+    <origin xyz="0.145 0.0 0.124"/>
+  </robotiq-3f-gripper_finger_articulated> -->
+
+</robot>
