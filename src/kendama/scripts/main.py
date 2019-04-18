@@ -37,82 +37,91 @@ from nav_msgs.msg import Odometry,OccupancyGrid
 from tf.msg import tfMessage
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
-def ur5e_control():
-
-    # initialize node
-    rospy.init_node('ur5e_control', anonymous=True)
-     # laser_projector = LaserProjection()
-    pointlist = []
-    iteration = -1
-    old = 0
-    counter = 0
-    delta=0
-    startTime = time.time()
-    prevtime = time.time()
-
-    # move_it_turtlebot = MoveGroupPythonIntefaceTutorial()
-
-    # set node rate
-    loop_rate   = 40
-    ts          = 1.0 / loop_rate
-    rate        = rospy.Rate(loop_rate)
-    t_prev      = time.time()
-    keypress    = time.time()
-
-    i = 0
-    sigfig = 3
-
-
-    joint_traj = JointTrajectory()
-    joint_point = JointTrajectoryPoint()
-    joint_vels = Float64MultiArray()
-
-    command_pub = rospy.Publisher('/pos_based_pos_traj_controller/command',JointTrajectory,queue_size =1)
-    # command_pub2 = rospy.Publisher('/ur_driver/jointspeed',JointTrajectory,queue_size =1)
-    command_pub3 = rospy.Publisher('joint_group_vel_controller/command',Float64MultiArray,queue_size =1)
-    # rospy.on_shutdown(ssssssssssssss(command_pub3))
-
-
-    joint_traj.joint_names = ['elbow_joint', 'shoulder_lift_joint', 'shoulder_pan_joint', 'wrist_1_joint', 'wrist_2_joint',
-  'wrist_3_joint']
-
-    joint_point.positions = np.array([-0.9774951934814453, -1.6556574306883753, -1.6917484442340296, -0.17756159723315434, 1.5352659225463867, 2.1276955604553223])
-    # joint_point.positions = np.array([0,0,0,0,0,0])
-    joint_point.velocities = np.array([1,-1,-1,-1,-1,-1])
-    joint_point.accelerations = np.array([1,-1,-1,-1,-1,-1])
-    # joint_point.velocities = np.array([-0.19644730172630054, -0.1178443083991266, 0.14913797608558607, 0.41509166700461164, 0.14835661279488965, -0.10175914445443687])
-    # joint_point.accelerations = np.array([-1.4413459458952043, -0.8646309451201031, 1.0942345113473044, 3.0455531135039218, 1.0885016007834076, -0.7466131070688594])
-    joint_point.time_from_start.secs = 10
-
-    joint_vels.data = np.array([0,0,0,0,0,0])
-
-
-    joint_traj.points = [joint_point]
-    while not rospy.is_shutdown():
-        # command_pub.publish(joint_traj)
-        command_pub3.publish(joint_vels)
-        f = 2
-        w = 2*3.14159*f
-        dt = time.time()-startTime
-        # joint_vels.data = np.array([0,0,0.4*sin(2*dt), 0.4*sin(2*dt),0,0.4*sin(2*dt)])
-        joint_vels.data = np.array([0,0,0,2.5*sin(3*dt),0,0])
-        # joint_point.positions = np.array([cos(3*dt), sin(3*dt)-1, -0.21748375933108388, 1.4684332653952596, -0.2202624218007605, 0.08156436078884344])
-        # # joint_point.velocities = np.array([cos(3*dt), sin(3*dt)-1, -0.21748375933108388, 1.4684332653952596, -0.2202624218007605, 0.08156436078884344])
-        # joint_traj.points = [joint_point]
 
 
 
+class ur5e_control(object):
+    def __init__(self):
+        # initialize node
+        rospy.init_node('ur5e_control', anonymous=True)
+         # laser_projector = LaserProjection()
+        pointlist = []
+        iteration = -1
+        old = 0
+        counter = 0
+        delta=0
+        startTime = time.time()
+        prevtime = time.time()
 
-        # command_pub2.publish(joint_traj)
-        # a = raw_input("============ Moving arm to pose 1")
-        # s1 = move_it_turtlebot.go_to_pose_goal(np.round([0.4,-0.04,.7,0,pi/2,0],2))
-        # print(move_it_turtlebot.move_group.get_current_pose())
-        # a = raw_input("============ Moving arm to pose 2")
-        # s1 = move_it_turtlebot.go_to_pose_goal(np.round([0.4,-0.04,.6,0,pi/2,0],2))
-        # print(move_it_turtlebot.move_group.get_current_pose())
-        # a = raw_input("aaaaaa")
-        rate.sleep()
-    
+        # move_it_turtlebot = MoveGroupPythonIntefaceTutorial()
+
+        # set node rate
+        loop_rate   = 40
+        ts          = 1.0 / loop_rate
+        rate        = rospy.Rate(loop_rate)
+        t_prev      = time.time()
+        keypress    = time.time()
+
+        i = 0
+        sigfig = 3
+
+
+        joint_traj = JointTrajectory()
+        joint_point = JointTrajectoryPoint()
+        joint_vels = Float64MultiArray()
+
+        self.command_pub = rospy.Publisher('/pos_based_pos_traj_controller/command',JointTrajectory,queue_size =1)
+        # command_pub2 = rospy.Publisher('/ur_driver/jointspeed',JointTrajectory,queue_size =1)
+        self.command_pub3 = rospy.Publisher('joint_group_vel_controller/command',Float64MultiArray,queue_size =1)
+        rospy.on_shutdown(self.shutdown)
+
+
+        joint_traj.joint_names = ['elbow_joint', 'shoulder_lift_joint', 'shoulder_pan_joint', 'wrist_1_joint', 'wrist_2_joint',
+      'wrist_3_joint']
+
+        joint_point.positions = np.array([-0.9774951934814453, -1.6556574306883753, -1.6917484442340296, -0.17756159723315434, 1.5352659225463867, 2.1276955604553223])
+        # joint_point.positions = np.array([0,0,0,0,0,0])
+        joint_point.velocities = np.array([1,-1,-1,-1,-1,-1])
+        joint_point.accelerations = np.array([1,-1,-1,-1,-1,-1])
+        # joint_point.velocities = np.array([-0.19644730172630054, -0.1178443083991266, 0.14913797608558607, 0.41509166700461164, 0.14835661279488965, -0.10175914445443687])
+        # joint_point.accelerations = np.array([-1.4413459458952043, -0.8646309451201031, 1.0942345113473044, 3.0455531135039218, 1.0885016007834076, -0.7466131070688594])
+        joint_point.time_from_start.secs = 10
+
+        joint_vels.data = np.array([0,0,0,0,0,0])
+
+
+        joint_traj.points = [joint_point]
+        while not rospy.is_shutdown():
+            # command_pub.publish(joint_traj)
+            self.command_pub3.publish(joint_vels)
+            f = 2
+            w = 2*3.14159*f
+            dt = time.time()-startTime
+            # joint_vels.data = np.array([0,0,0.4*sin(2*dt), 0.4*sin(2*dt),0,0.4*sin(2*dt)])
+            # joint_vels.data = np.array([0,0,0,0,0,-1])
+            joint_vels.data = np.array([0,0,-0.5*sin(2*dt),1*sin(2*dt),0,0])
+            # joint_point.positions = np.array([cos(3*dt), sin(3*dt)-1, -0.21748375933108388, 1.4684332653952596, -0.2202624218007605, 0.08156436078884344])
+            # # joint_point.velocities = np.array([cos(3*dt), sin(3*dt)-1, -0.21748375933108388, 1.4684332653952596, -0.2202624218007605, 0.08156436078884344])
+            # joint_traj.points = [joint_point]
+
+
+
+
+            # command_pub2.publish(joint_traj)
+            # a = raw_input("============ Moving arm to pose 1")
+            # s1 = move_it_turtlebot.go_to_pose_goal(np.round([0.4,-0.04,.7,0,pi/2,0],2))
+            # print(move_it_turtlebot.move_group.get_current_pose())
+            # a = raw_input("============ Moving arm to pose 2")
+            # s1 = move_it_turtlebot.go_to_pose_goal(np.round([0.4,-0.04,.6,0,pi/2,0],2))
+            # print(move_it_turtlebot.move_group.get_current_pose())
+            # a = raw_input("aaaaaa")
+            rate.sleep()
+        
+    def shutdown(self):
+        emptyves = Float64MultiArray()
+        emptyves.data = np.array([0,0,0,0,0,0])
+        self.command_pub3.publish(emptyves)
+        rospy.loginfo("Shutting Down")
 
 
 def ssssssssssssss(command_pub3):

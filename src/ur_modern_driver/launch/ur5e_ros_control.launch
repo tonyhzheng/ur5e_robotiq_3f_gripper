@@ -11,7 +11,7 @@
   <arg name="min_payload"  default="0.0"/>
   <arg name="max_payload"  default="3.0"/>
   <arg name="prefix" default="" />  
-  <arg name="max_velocity" default="10.0"/> <!-- [rad/s] -->
+  <arg name="max_velocity" default="3"/> <!-- [rad/s] -->
   <arg name="base_frame" default="$(arg prefix)base" />
   <arg name="tool_frame" default="$(arg prefix)tool0_controller" />
   <arg name="shutdown_on_disconnect" default="true" />
