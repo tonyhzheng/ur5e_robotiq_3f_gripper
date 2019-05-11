@@ -142,37 +142,9 @@ class ur5e_control(object):
             # command_pub.publish(joint_traj)
             f = 2
             w = 2*3.14159*f
-            current_time = time.time()-startTime
-            if current_time>2:
-                ready +=1 
-            if ready ==1:
-                startTime = time.time()
-                print(startTime)
-                ready +=1
-            elif ready>1:
-                # pass
-                # print(current_time)
-                # print(current_time, self.get_vel_from_data(current_time))
-                [x,z] = self.get_vel_from_data(current_time)
-                if self.body_frame:
-                    cart_vel_des = np.array([z,-x,0,0,0,0])
-                else:
-                    cart_vel_des = np.array([x,0,z,0,0,0])
-                self.joint_vel_des = np.matmul(self.jacob_pseudo_inv,cart_vel_des)
-                joint_vels.data = self.joint_vel_des
-                # print(around(joint_vels.data-self.qv ,4))
-
-                # print(around(joint_vels.data ,4),around(self.v ,4))
-                # raw_input()
-                if current_time>10:
-                    self.movehome = True
-
-                if self.movehome:
-                    joint_vels.data = ((self.home.transpose()-self.theta)/3)
-                    print(joint_vels.data )
-                    
-                self.command_pub3.publish(joint_vels)
-
+            joint_vels.data = ((self.home.transpose()-self.theta))
+            print(joint_vels.data )
+            self.command_pub3.publish(joint_vels)
             
             # joint_vels.data = np.array([0,0,0.4*sin(2*current_time), 0.4*sin(2*current_time),0,0.4*sin(2*current_time)])
             # joint_vels.data = np.array([0,0,0,0,0,0])

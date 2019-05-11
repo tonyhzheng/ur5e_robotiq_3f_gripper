@@ -2,7 +2,7 @@ import numpy as np
 import sys
 import roslib
 roslib.load_manifest("ur_kinematics")
-from ur_kin_py import forward, inverse
+from ur_kinematics.ur_kin_py import forward, inverse
 
 def best_sol(sols, q_guess, weights):
     valid_sols = []
@@ -51,6 +51,8 @@ def main():
                         for i6 in range(0,5):
                             q = np.array([i1*np.pi/2., i2*np.pi/2., i3*np.pi/2., 
                                           i4*np.pi/2., i5*np.pi/2., i6*np.pi/2.])
+                            print(q)
+                            raw_input()
                             test_q(q)
     print "Testing random configurations..."
     for i in range(10000):

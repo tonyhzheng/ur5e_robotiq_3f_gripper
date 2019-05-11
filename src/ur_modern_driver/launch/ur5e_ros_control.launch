@@ -5,17 +5,18 @@
   <arg name="debug" default="false" />
   <arg unless="$(arg debug)" name="launch_prefix" value="" />
   <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+  <arg name = "rbname" default = "test" />
 
   <arg name="robot_ip"/>
   <arg name="limited" default="false"/>
   <arg name="min_payload"  default="0.0"/>
   <arg name="max_payload"  default="3.0"/>
   <arg name="prefix" default="" />  
-  <arg name="max_velocity" default="3"/> <!-- [rad/s] -->
+  <arg name="max_velocity" default="10.0"/> <!-- [rad/s] -->
   <arg name="base_frame" default="$(arg prefix)base" />
   <arg name="tool_frame" default="$(arg prefix)tool0_controller" />
   <arg name="shutdown_on_disconnect" default="true" />
-  <arg name="controller" default="joint_group_vel_controller" />
+  <arg name="controller" default="3" />
   <!-- robot model -->
   <include file="$(find ur_e_description)/launch/ur5e_upload.launch">
     <arg name="limited" value="$(arg limited)"/>
@@ -41,17 +42,16 @@
 
   <!-- spawn controller manager -->
   <node name="ros_control_controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
-    output="screen" args="joint_state_controller force_torque_sensor_controller $(arg controller)"/>
+    output="screen" args="joint_state_controller force_torque_sensor_controller joint_group_vel_controller" />
 
 <!-- joint_group_vel_controller -->
-<!-- vel_based_pos_traj_controller -->
-
-  <!-- load other controller --> 
-  <!-- <node name="ros_control_controller_manager" pkg="controller_manager" type="controller_manager" respawn="false"
-    output="screen" args="load joint_group_vel_controller" />  -->
 
   <!-- Convert joint states to /tf tranforms -->
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+  <node name="record_rosbag" pkg="rosbag" type="record" output="screen" args="-a -o $(arg rbname)"/>
+
+
 
 </launch>
 

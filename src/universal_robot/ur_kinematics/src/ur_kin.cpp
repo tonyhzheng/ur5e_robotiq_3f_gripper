@@ -25,12 +25,27 @@ namespace ur_kinematics {
 
     //#define UR5_PARAMS
     #ifdef UR5_PARAMS
+    /*
+    const double d1 =  0.163;
+    const double a2 = 0.425;
+    const double a3 = 0.392;
+    const double d4 =  0.127;
+    const double d5 =  0.1;
+    const double d6 =  0.1;*/
+
+    const double d1 =  0.1625;
+    const double a2 = 0.42500;
+    const double a3 = 0.3922;
+    const double d4 =  0.1333;
+    const double d5 =  0.0997;
+    const double d6 =  0.0996;
+    /*
     const double d1 =  0.089159;
     const double a2 = -0.42500;
     const double a3 = -0.39225;
     const double d4 =  0.10915;
     const double d5 =  0.09465;
-    const double d6 =  0.0823;
+    const double d6 =  0.0823;*/
     #endif
     
     //#define UR3_PARAMS

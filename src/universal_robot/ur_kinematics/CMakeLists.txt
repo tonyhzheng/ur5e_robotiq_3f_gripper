@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs moveit_core moveit_
   moveit_ros_planning pluginlib tf_conversions)
 
 find_package(Boost REQUIRED COMPONENTS system)
+find_package(PythonLibs 2.7 REQUIRED)
 
 catkin_python_setup()
 
@@ -17,7 +18,6 @@ catkin_package(
     pluginlib tf_conversions
   DEPENDS Boost
 )
-
 
 ###########
 ## Build ##
@@ -58,6 +58,14 @@ target_link_libraries(ur10_moveit_plugin
   ur10_kin)
 
 
+
+PYTHON_ADD_MODULE(ur_kin_py src/ur_kin_py.cpp)
+target_link_libraries(ur_kin_py ur5_kin boost_python boost_numpy ${PYTHON_LIBRARIES} ${Boost_LIBRARIES} )
+
+set_target_properties(ur_kin_py PROPERTIES 
+                      LIBRARY_OUTPUT_DIRECTORY ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_PYTHON_DESTINATION})
+
+
 #############
 ## Install ##
 #############
@@ -76,4 +84,10 @@ install(DIRECTORY include/${PROJECT_NAME}/
 # install moveit plugin description file
 install(FILES ur_moveit_plugins.xml
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+
+install(TARGETS ur_kin_py
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}
 )

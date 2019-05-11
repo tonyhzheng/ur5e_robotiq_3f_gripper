@@ -14,7 +14,7 @@ roslaunch ur5_e_moveit_config moveit_rviz.launch config:=true
 ################################################################################
 
 
-
+rosrun kendama main.py 
 
 
 
@@ -53,7 +53,7 @@ roslaunch ur_modern_driver ur5e_ros_control.launch robot_ip:=127.0.0.1
 roslaunch ur5_e_moveit_config ur5_e_moveit_planning_execution.launch sim:=true 
 roslaunch ur5_e_moveit_config moveit_rviz.launch config:=true
 
-rosrun kendama main.py 
+
 
 Modify srdf collisions called in planning_context.launch
 
@@ -115,3 +115,8 @@ root Link: world has 1 child(ren)
 
 
 urdf_to_graphiz /tmp/phantom_pincher.urdf
+
+
+
+https://github.com/ros-industrial/universal_robot/pull/364
+installing ur_kinematics
