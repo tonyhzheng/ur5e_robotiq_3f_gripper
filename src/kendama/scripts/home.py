@@ -140,12 +140,12 @@ class ur5e_control(object):
         self.joint_vel_des = np.array([0,0,0,0,0,0])
         self.home = np.array([0,-70*pi/180,-140*pi/180,-60*pi/180,0,0])
         self.cupup = np.array([0,-70*pi/180,-140*pi/180,-60*pi/180,-90*pi/180,0])
-        self.movehome = False
+        self.movehome = True
 
         self.count = 0
         self.Tstart = []
 
-        self.home1 = False
+        self.home1 = True
         while not rospy.is_shutdown():
             # command_pub.publish(joint_traj)
             f = 2

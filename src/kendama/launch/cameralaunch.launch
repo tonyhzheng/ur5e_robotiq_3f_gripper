@@ -1,0 +1,5 @@
+<launch>
+	<node pkg = "kendama" type = "real_camera_pub2.py" name = "position" output="screen"/>
+	<node pkg = "kendama" type = "camera2world.py" name = "converter" output="screen"/>
+	<!-- <node pkg = "kendama" type = "controller.py" name = "controller"/> -->
+</launch>

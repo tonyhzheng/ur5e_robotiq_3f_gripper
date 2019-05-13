@@ -158,7 +158,8 @@ def world_pos():
 	rospy.Subscriber('camera_view',Vector3,camera_callback )
 	rospy.Subscriber('robot_view',Vector3,robot_callback )
 
-	P = calibrate()
+	P = np.array([ 1.60593196,  0.10157054, -3.12697484,  0.43266683,  0.51336184,
+        0.50048644])#calibrate()
 	
 	world_pub = rospy.Publisher('world_view', Vector3, queue_size = 10)
 

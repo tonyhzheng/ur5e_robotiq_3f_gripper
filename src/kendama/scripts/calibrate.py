@@ -277,8 +277,8 @@ class ur5e_control(object):
         else:
             xdot_interp = 0
             zdot_interp = 0
-        xdot_interp = -0.1   
-        zdot_interp = 0
+        xdot_interp = 0
+        zdot_interp = -0.1
         return [xdot_interp,zdot_interp]
 
     def interp(self,vec,dt,t):
