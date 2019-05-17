@@ -53,14 +53,14 @@ import cvxpy as cp
 
 class RobotController():
     def __init__(self):
-        self.N = 8
+        self.N = 5
         self.n = 6
         self.d = 6 
         self.delT = 0.01
         self.x0 = np.zeros((6,1))
         self.last_guess = np.zeros(((self.N+1)*self.n + self.N*self.d,1))
 
-        self.solver = 'primaldual' # current options: 'cvx' or 'intpoint' or 'cvxgeneral' or 'primaldual'
+        self.solver = 'intpoint' # current options: 'cvx' or 'intpoint' or 'cvxgeneral' or 'primaldual'
 
         # which state in the trajectory are we currently closest to?
         self.closestIndex = 0
@@ -85,6 +85,7 @@ class RobotController():
         np.savetxt("Q.csv", Q, delimiter=",")
         np.savetxt("p.csv", p, delimiter=",")
 
+
         inputs_to_apply = np.zeros((1,6))
 
 
@@ -106,14 +107,12 @@ class RobotController():
                 # are we sending the correct thing?     
                 uPred = np.squeeze(np.transpose(np.reshape((Solution[n*(N+1)+np.arange(d)]),(d,1))))        
                 inputs_to_apply = np.array([uPred[0], uPred[1], uPred[2], uPred[3], uPred[4], uPred[5]])
+
+                # this is supposed to print out the number of required iterations
+                iterations = res_cons['iterations'] 
             else:
                 return
-        elif self.solver == 'intpoint':
-        # METHOD TWO: BRIAN INTERIOR POINT SOLVER
-            Solution = InteriorPoint_PhaseI(Q,p2,F,g2,A,b2,last_guess)
-            #self.last_guess = Solution
-            uPred = Solution[n*(N+1)+np.arange(d)]
-            inputs_to_apply = np.array([uPred[0], uPred[1], uPred[2], uPred[3], uPred[4], uPred[5]])
+
 
         elif self.solver == 'cvxgeneral':
             # METHOD THREE: GENERAL CVX SOLVER 
@@ -123,17 +122,38 @@ class RobotController():
             prob = cp.Problem(objective, constraints)
 
             result = prob.solve()
+
+            # extract num_iters to get the number of iterations
+            iterations = prob.solver_stats.num_iters
+
             uPred = x.value[n*(N+1)+np.arange(d)]
             inputs_to_apply = np.array([uPred[0], uPred[1], uPred[2], uPred[3], uPred[4], uPred[5]])
 
+
+        elif self.solver == 'intpoint':
+        # METHOD TWO: BRIAN INTERIOR POINT SOLVER
+            Solution, iterations = InteriorPoint_PhaseI(Q,p2,F,g2,A,b2,last_guess)
+            #self.last_guess = Solution
+            uPred = Solution[n*(N+1)+np.arange(d)]
+            inputs_to_apply = np.array([uPred[0], uPred[1], uPred[2], uPred[3], uPred[4], uPred[5]])
+
+        
         elif self.solver == 'primaldual':
-            Solution = PrimalDualIP(Q,p2,F,g2,A,b2,last_guess)
+            Solution, iterations = PrimalDualIP(Q,p2,F,g2,A,b2,last_guess)
             #self.last_guess = Solution
             uPred = Solution[n*(N+1)+np.arange(d)]
             inputs_to_apply = np.array([uPred[0], uPred[1], uPred[2], uPred[3], uPred[4], uPred[5]])
 
 
-        return inputs_to_apply
+        elif self.solver == 'customintpoint':
+            Solution, iterations = InteriorPoint_PhaseI_SpeedUp_2(Q,p2,F,g2,A,b2,last_guess)
+            #self.last_guess = Solution
+            uPred = Solution[n*(N+1)+np.arange(d)]
+            inputs_to_apply = np.array([uPred[0], uPred[1], uPred[2], uPred[3], uPred[4], uPred[5]])
+
+
+
+        return inputs_to_apply, iterations
         # send the velocity commands over the publisher
         
 
@@ -179,7 +199,6 @@ class RobotController():
         g_unit = np.vstack((qx, qu))
         g_unit2 = np.vstack((np.tile(q_min,(N,1)),qu))
         g = np.vstack((g_unit, g_unit))
-
 
         return F,g
 
@@ -300,53 +319,21 @@ def importTrajFromBag(filename):
 
 
 def InteriorPoint_PhaseI(Q,q,F,g,A,b,x,eps=1e-6):
-
-    ##################### PHASE I #############################
-    ###########################################################
     ndim = A.shape[1]
-    #x = np.zeros((ndim,1))#np.random.randn(ndim,1) #initialize x0
-    t = 10.0
-    mu = 10.0
-    Beta = 0.9
+    iterations = 0
+    # want to skip the Phase I if we can quickly provide a strictly feasible point (all u = 0.)
+    N = A.shape[0]/6 - 1
 
-    Abar = np.hstack((A,np.zeros((A.shape[0],1)))) 
+    while (True):
+        # check if the returned x is strictly feasible
+        if(all(F.dot(x)-g < 0) & np.allclose(A.dot(x),b)):
+            # x is strictly feasible, can continue with that x
+            break
+        else:
+            # we'll extract x0 from b, and forward propagate with u=0 to get the rest of the vector x
+            x0 = b[0:6]
+            x = np.vstack((np.reshape(np.tile(x0,N+1).T,((N+1)*6,1)),np.zeros((N*6,1))))
 
-    s = np.max(F.dot(x)-g)+1 #initialize slack variable
-
-    while(F.shape[0]/t > eps):
-        t = mu*t
-        while(True):
-            if(all(F.dot(x)-g < 0) & np.allclose(A.dot(x),b)):
-                break
-
-            gradPhi = ((np.hstack((F,-np.ones((F.shape[0],1))))).T).dot(1/-(F.dot(x)-g-s))
-            hessPhi = ((np.hstack((F,-np.ones((F.shape[0],1))))).T).dot(np.diag(np.square(1/-(F.dot(x)-g-s)).flatten())).dot(np.hstack((F,-np.ones((F.shape[0],1)))))
-            KKTmatrix = np.vstack((np.hstack((hessPhi,Abar.T)),\
-                                   np.hstack((Abar,np.zeros((Abar.shape[0],Abar.shape[0]))))))
-            gradF0 = np.vstack((np.zeros(x.shape),1))
-
-            v = np.linalg.lstsq(KKTmatrix,-np.vstack((t*gradF0+gradPhi,A.dot(x)-b)))[0]
-            #v = np.linalg.pinv(KKTmatrix).dot(-np.vstack((t*gradF0+gradPhi,Abar.dot(np.vstack((x,s)))-b)))
-            
-            #check log decrement
-            if(v[:ndim+1].T.dot(np.linalg.lstsq(hessPhi,v[:ndim+1])[0])/2 < eps ):
-            #if(v[:ndim+1].T.dot(np.linalg.pinv(hessPhi).dot(v[:ndim+1]))/2 < eps ):
-                break
-
-            #backtracking linesearch to maintain feasibility
-            Alpha = 1
-            while(any(F.dot(x+Alpha*v[:ndim])-g-(s+Alpha*v[ndim]) > 0)):
-                Alpha = Beta*Alpha
-
-            #check to see if already taking excessively small stepsizes
-            if(Alpha <= eps):
-                break
-
-            #update x and s
-            x = x + Alpha*v[:ndim]
-            s = s + Alpha*v[ndim]
-
-            
     ##################### PHASE II ############################
     ###########################################################
 
@@ -354,23 +341,37 @@ def InteriorPoint_PhaseI(Q,q,F,g,A,b,x,eps=1e-6):
     t = 1000.0
     mu = 10.0
     Beta = 0.9
+    F1,F2 = np.shape(F)
     
     while(F.shape[0]/t > eps):
         t = mu*t
         while(True):
             
-            gradPhi2 = F.T.dot(1/-(F.dot(x)-g))
-            hessPhi2 = F.T.dot(np.diag(np.square(1/-(F.dot(x)-g)).flatten())).dot(F)
+            
+            lower_entries = -np.hstack((np.diagflat(1/(x[6:] - g[(g.shape[0]/2):])), np.diagflat(1/(x[6:] + g[(g.shape[0]/2):]))))
+            gradPhi2 = np.vstack((np.zeros((6,2*ndim-12)), lower_entries))
+            gradPhi2 = np.reshape(gradPhi2.sum(axis=1), (np.shape(gradPhi2)[0],1))
+            #brian_gradPhi2 = F.T.dot(1/-(Fdxdg))
+            # new time: 0.002716
+
+            #brian_hessPhi2 = F.T.dot(np.diagflat(np.square(1/-(Fdxdg)))).dot(F)
+            #my_hessPhi2_unit = 2*np.diagflat(np.square(1/g[(g.shape[0]/2):]))
+            hessPhi2 = block_diag(np.zeros((6,6)), 2*np.diagflat(np.square(1/g[(g.shape[0]/2):])))
+            # new time: 0.0031
+
             KKTmatrix2 = np.vstack((np.hstack((t*(2*Q)+hessPhi2,A.T)),\
                                    np.hstack((A,np.zeros((A.shape[0],A.shape[0]))))))
             gradF02 = t*(2*Q.dot(x)+q)
 
             #v = np.linalg.lstsq(KKTmatrix2,-np.vstack((gradF02+gradPhi2,A.dot(x)-b)))[0]
-            v = np.linalg.inv(KKTmatrix2).dot(-np.vstack((gradF02+gradPhi2,A.dot(x)-b)))
+            # KKT matrix also depends on t, so can't pre-do the inversion? 
+            #v = np.linalg.inv(KKTmatrix2).dot(-np.vstack((gradF02+gradPhi2,A.dot(x)-b)))
+
+            v = sp.solve(KKTmatrix2,-np.vstack((gradF02+gradPhi2,A.dot(x)-b)),assume_a='sym')
 
             #check log decrement
             #if(v[:ndim].T.dot(np.linalg.lstsq(2*Q+hessPhi2,v[:ndim])[0])/2 < eps ):
-            if(v[:ndim].T.dot(np.linalg.inv(2*Q+hessPhi2).dot(v[:ndim]))/2 < eps ):
+            if(v[:ndim].T.dot(sp.solve(2*Q+hessPhi2,v[:ndim],assume_a='pos'))/2 < eps ):
                 break
 
             #backtracking linesearch to maintain feasibility
@@ -384,15 +385,87 @@ def InteriorPoint_PhaseI(Q,q,F,g,A,b,x,eps=1e-6):
 
             #update x and s
             x = x + Alpha*v[:ndim]
+            iterations += 1
 
-    return x
+    return x, iterations
 
+def InteriorPoint_PhaseI_SpeedUp_2(Q,q,F,g,A,b,x,eps=1e-6):
+    ndim = A.shape[1]
+    iterations = 0
 
+    # want to skip the Phase I if we can quickly provide a strictly feasible point (all u = 0.)
+    N = A.shape[0]/6 - 1
+
+    while (True):
+        # check if the returned x is strictly feasible
+        if(all(F.dot(x)-g < 0) & np.allclose(A.dot(x),b)):
+            # x is strictly feasible, can continue with that x
+            break
+        else:
+            # we'll extract x0 from b, and forward propagate with u=0 to get the rest of the vector x
+            x0 = b[0:6]
+            x = np.vstack((np.reshape(np.tile(x0,N+1).T,((N+1)*6,1)),np.zeros((N*6,1))))
+
+    ##################### PHASE II ############################
+    ###########################################################
+
+    #use x0 returned from Phase I
+    t = 1000.0
+    mu = 10.0
+    Beta = 0.9
+    F1,F2 = np.shape(F)
+    
+    while(F.shape[0]/t > eps):
+        t = mu*t
+        while(True):
+            
+            
+            lower_entries = -np.hstack((np.diagflat(1/(x[6:] - g[(g.shape[0]/2):])), np.diagflat(1/(x[6:] + g[(g.shape[0]/2):]))))
+            gradPhi2 = np.vstack((np.zeros((6,2*ndim-12)), lower_entries))
+            gradPhi2 = np.reshape(gradPhi2.sum(axis=1), (np.shape(gradPhi2)[0],1))
+            #brian_gradPhi2 = F.T.dot(1/-(Fdxdg))
+            # new time: 0.002716
+
+            #brian_hessPhi2 = F.T.dot(np.diagflat(np.square(1/-(Fdxdg)))).dot(F)
+            #my_hessPhi2_unit = 2*np.diagflat(np.square(1/g[(g.shape[0]/2):]))
+            hessPhi2 = block_diag(np.zeros((6,6)), 2*np.diagflat(np.square(1/g[(g.shape[0]/2):])))
+            # new time: 0.0031
+
+            gradF02 = t*(2*Q.dot(x)+q)
+
+            #elimination method
+            H = t*2*Q+hessPhi2
+            z1 = sp.solve(H,A.T,assume_a='pos')
+            z2 = sp.solve(H,gradF02+gradPhi2,assume_a='pos')
+            S = -A.dot(sp.solve(H,A.T,assume_a='pos'))
+            w = sp.solve(S,(A.dot(z2)-(A.dot(x)-b)),assume_a='sym')
+            v = np.vstack((-z1.dot(w)-z2,w))
+
+            #check log decrement
+            #if(v[:ndim].T.dot(np.linalg.lstsq(2*Q+hessPhi2,v[:ndim])[0])/2 < eps ):
+            if(v[:ndim].T.dot(sp.solve(2*Q+hessPhi2,v[:ndim],assume_a='pos'))/2 < eps ):
+                break
+
+            #backtracking linesearch to maintain feasibility
+            Alpha = 1
+            while(any(F.dot(x+Alpha*v[:ndim])-g> 0)):
+                Alpha = Beta*Alpha
+
+            #check to see if already taking excessively small stepsizes
+            if(Alpha <= eps):
+                break
+
+            #update x and s
+            x = x + Alpha*v[:ndim]
+            iterations += 1
+
+    return x, iterations
 
 def PrimalDualIP(Q,q,F,g,A,b,x,eps=1e-10):
 
     ##################### PHASE I #############################
     ###########################################################
+    iterations = 0
     ndim = A.shape[1]
 
     # if(x==None):
@@ -402,42 +475,22 @@ def PrimalDualIP(Q,q,F,g,A,b,x,eps=1e-10):
     mu = 20.0
     Beta = 0.8
 
-    Abar = np.hstack((A,np.zeros((A.shape[0],1)))) 
 
-    s = np.max(F.dot(x)-g)+1 #initialize slack variable
 
-    while(F.shape[0]/t > eps):
-        t = mu*t
-        while(True):
-            if(all(F.dot(x)-g < 0) & np.allclose(A.dot(x),b)):
-                break
+    ############################# PHASE I #########################################
 
-            gradPhi = ((np.hstack((F,-np.ones((F.shape[0],1))))).T).dot(1/-(F.dot(x)-g-s))
-            hessPhi = ((np.hstack((F,-np.ones((F.shape[0],1))))).T).dot(np.diag(np.square(1/-(F.dot(x)-g-s)).flatten())).dot(np.hstack((F,-np.ones((F.shape[0],1)))))
-            KKTmatrix = np.vstack((np.hstack((hessPhi,Abar.T)),\
-                                   np.hstack((Abar,np.zeros((Abar.shape[0],Abar.shape[0]))))))
-            gradF0 = np.vstack((np.zeros(x.shape),1))
+    # want to skip the Phase I if we can quickly provide a strictly feasible point (all u = 0.)
+    N = A.shape[0]/6 - 1
 
-            v = np.linalg.lstsq(KKTmatrix,-np.vstack((t*gradF0+gradPhi,A.dot(x)-b)))[0]
-            #v = np.linalg.pinv(KKTmatrix).dot(-np.vstack((t*gradF0+gradPhi,Abar.dot(np.vstack((x,s)))-b)))
-            
-            #check log decrement
-            if(v[:ndim+1].T.dot(np.linalg.lstsq(hessPhi,v[:ndim+1])[0])/2 < eps ):
-            #if(v[:ndim+1].T.dot(np.linalg.pinv(hessPhi).dot(v[:ndim+1]))/2 < eps ):
-                break
-
-            #backtracking linesearch to maintain feasibility
-            Alpha = 1
-            while(any(F.dot(x+Alpha*v[:ndim])-g-(s+Alpha*v[ndim]) > 0)):
-                Alpha = Beta*Alpha
-
-            #check to see if already taking excessively small stepsizes
-            if(Alpha <= eps):
-                break
-
-            #update x and s
-            x = x + Alpha*v[:ndim]
-            s = s + Alpha*v[ndim]
+    while (True):
+        # check if the returned x is strictly feasible
+        if(all(F.dot(x)-g < 0) & np.allclose(A.dot(x),b)):
+            # x is strictly feasible, can continue with that x
+            break
+        else:
+            # we'll extract x0 from b, and forward propagate with u=0 to get the rest of the vector x
+            x0 = b[0:6]
+            x = np.vstack((np.reshape(np.tile(x0,N+1).T,((N+1)*6,1)),np.zeros((N*6,1))))
 
             
     ##################### PHASE II ############################
@@ -498,7 +551,9 @@ def PrimalDualIP(Q,q,F,g,A,b,x,eps=1e-10):
                          -np.diag(Lambda.flatten()).dot(F.dot(x)-g)-1/t*np.ones((F.shape[0],1)),\
                          A.dot(x)-b))
 
-    return x
+        iterations+=1
+
+    return x, iterations
 ############################################################################################################################
 ################################################## MAIN SCRIPT #############################################################
 ############################################################################################################################
@@ -516,6 +571,7 @@ UR5E = RobotController()
 joint_sub = rospy.Subscriber('joint_states',JointState, UR5E.true_velocity_callback)
 command_pub = rospy.Publisher('joint_group_vel_controller/command',Float64MultiArray,queue_size =1)
 timing_pub = rospy.Publisher('solver_time',Float64,queue_size=1)
+iterations_pub = rospy.Publisher('solver_iterations',Float64,queue_size=1)
 
 # this bag has to be in the folder 
 # for smooth movements, the recorded trajectory needs to be the same recorded frequency as the ROS will run
@@ -538,15 +594,22 @@ while UR5E.closestIndex + UR5E.N < trajectory_length:
     # solve the QP using chosen matrix
 
     start_time = time.time()
-    input_calc = UR5E.TrackingControl()
-    
+    input_calc, solver_iterations = UR5E.TrackingControl()
+
+
     calc_time = time.time() - start_time
-    print calc_time
-    timing_pub.publish(calc_time)
-    
+
+
     # send input to the controller
     joint_vels.data = input_calc
     command_pub.publish(joint_vels)
+
+    # publish solver iterations
+    iterations_pub.publish(solver_iterations)
+
+
+    #print calc_time
+    timing_pub.publish(calc_time)
 
 joint_vels.data = np.array([0,0,0,0,0,0])
 command_pub.publish(joint_vels)

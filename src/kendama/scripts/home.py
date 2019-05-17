@@ -308,7 +308,7 @@ class ur5e_control(object):
             xilist[i] = xi
             wHat = self.skewSym(xi[3:6])
             # print(norm(w[i]))
-            if (norm(w[i])!=0)and(J[i]==1):
+            if (norm(w[i])!=0 ) and (J[i]==1):
                 eW = eye(3)+wHat*sin(theta[i])+(1-cos(theta[i]))*np.matmul(wHat,wHat)
                 Tp = np.matmul(np.matmul(eye(3)-eW,wHat)+np.matmul(w[i],w[i].transpose())*theta[i],xi[0:3])
                 T[i]= np.concatenate((np.concatenate((eW,Tp),axis=1),np.array([[0,0,0,1]])),axis=0)
